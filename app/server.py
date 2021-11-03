@@ -9,94 +9,106 @@ import sys
 import argparse
 
 app = Flask(__name__,
-            static_url_path='', 
+            static_url_path='',
             static_folder='static',
             template_folder='templates'
         )
 CORS(app)
 
+
 def connect_to_db():
-	global con
-	con = pymysql.connect(host='0.0.0.0', user='root', password='root', database='marvin')
+    global con
+    con = pymysql.connect(host='0.0.0.0', user='root',
+                          password='root', database='marvin')
+
 
 @app.route("/hello")
 def hello():
     res = {
         "world": 42,
-		"server": "app"
+        "server": "app"
     }
     return res
+
 
 @app.route("/")
 def index():
     return render_template('home.html')
 
+
 @app.route("/demo")
 def demo():
     return render_template('index.html')
 
+
 @app.route('/swap_models', methods=['POST'])
 def swap_models():
-	mode = request.form.get('mode', type = str)
-	print(mode)
-	response_joint = requests.post('http://0.0.0.0:5001/swap_models', params={'mode': mode})
-	if response_joint.status_code==200:
-		return {'message' : 'Models Successfully Swapped!'}, 200
-	else:
-		return {'message' : 'Models Swap Failure! :('}, 500
+    mode = request.form.get('mode', type=str)
+    print(mode)
+    response_joint = requests.post(
+        'http://0.0.0.0:5001/swap_models', params={'mode': mode})
+    if response_joint.status_code == 200:
+        return {'message': 'Models Successfully Swapped!'}, 200
+    else:
+        return {'message': 'Models Swap Failure! :('}, 500
 
-@app.route('/analyze', methods = ['GET'])
+
+@app.route('/analyze', methods=['GET'])
 def get_stats():
-	'''
-	Inputs:
-	Input is assumed to be json of the form 
-  	{text: "some text"}. 
-  	
-  	Returns:
-	Following statistics for the text :
-	- Class, class probs
-	- Salience over tokens for each class
-  	'''
-	# Get text input from request
-	text = request.args.get('text', type = str)
-	mode = request.args.get('mode', type = str)
+    '''
+    Inputs:
+    Input is assumed to be json of the form
+      {text: "some text"}.
 
-	# Get attention heatmap
-	response_joint = requests.get('http://0.0.0.0:5001/classification', params={'text': text, 'mode': mode}).json()
-	response_joint['input'] = text
+      Returns:
+    Following statistics for the text :
+    - Class, class probs
+    - Salience over tokens for each class
+      '''
+    # Get text input from request
+    text = request.args.get('text', type=str)
+    mode = request.args.get('mode', type=str)
 
-	return {'results' : response_joint}, 200
+    # Get attention heatmap
+    response_joint = requests.get(
+        'http://0.0.0.0:5001/classification', params={'text': text, 'mode': mode}).json()
+    response_joint['input'] = text
 
-@app.route('/transfer', methods = ['GET'])
+    return {'results': response_joint}, 200
+
+
+@app.route('/transfer', methods=['GET'])
 def get_transfer_suggestions():
-	# Get text input from request
-	text = request.args.get('text', type = str).strip()
-	controls = request.args.get('controls', type = str)
-	mode = request.args.get('mode', type = str)
-	
-	
-	response_transfer = requests.get('http://0.0.0.0:5001/transfer', params={'text': text, 'mode': mode, 'controls':controls}).json()
-	return response_transfer, 200
+    # Get text input from request
+    text = request.args.get('text', type=str).strip()
+    controls = request.args.get('controls', type=str)
+    mode = request.args.get('mode', type=str)
+
+    response_transfer = requests.get('http://0.0.0.0:5001/transfer', \
+                                     params={'text': text, 'mode': mode, 'controls': controls}).json()
+    print('hi')
+    print(response_transfer)
+    return response_transfer, 200
 
 @app.route('/transfer_action', methods = ['POST'])
 def transfer_action():
-	original = request.form.get('original', type = str).strip()
-	original_val = '|'.join([k+":"+str(v) for k,v in json.loads(request.form.get('original_val', type = str).strip()).items()])
-	accepted = request.form.get('accepted', type = str).strip()
-	accepted_val = '|'.join([k+":"+str(v) for k,v in json.loads(request.form.get('accepted_val', type = str).strip()).items()])
-	mode = request.form.get('mode', type = str).strip()
-	goal = request.form.get('goal', type = str).strip()
-	
-	if server_args.db:
-		with con.cursor() as cur:
-			cur.execute(f'INSERT INTO accepted_transfers (mode, goal, original, original_val, accepted, accepted_val) VALUES ("{mode}", "{goal}", "{original}", "{original_val}","{accepted}", "{accepted_val}")')
-		con.commit()
-		with con.cursor() as cur:
-			cur.execute(f'SELECT LAST_INSERT_ID()')
-		row = cur.fetchone()
-		return {'id' : row[0]} , 201
-	else:
-		return {'id': -1}, 201
+    original = request.form.get('original', type = str).strip()
+    original_val = '|'.join([k+":"+str(v) for k,v in json.loads(request.form.get('original_val', type = str).strip()).items()])
+    accepted = request.form.get('accepted', type = str).strip()
+    accepted_val = '|'.join([k+":"+str(v) for k,v in json.loads(request.form.get('accepted_val', type = str).strip()).items()])
+    mode = request.form.get('mode', type = str).strip()
+    goal = request.form.get('goal', type = str).strip()
+
+    if server_args.db:
+        with con.cursor() as cur:
+            cur.execute(f'INSERT INTO accepted_transfers (mode, goal, original, original_val, accepted, accepted_val) VALUES ("{mode}", "{goal}", "{original}", "{original_val}","{accepted}", "{accepted_val}")')
+        con.commit()
+        with con.cursor() as cur:
+            cur.execute(f'SELECT LAST_INSERT_ID()')
+        row = cur.fetchone()
+        return {'id' : row[0]} , 201
+    else:
+        return {'id': -1}, 201
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--db', help='Store interactions in a db or not', default=False)

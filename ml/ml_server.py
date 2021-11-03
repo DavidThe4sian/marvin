@@ -5,7 +5,7 @@ from flask_cors import CORS
 # basic imports
 import json
 import sys
-import os 
+import os
 
 # Pytorch imports
 import torch
@@ -37,7 +37,7 @@ CORS(app)
 #         transfer_model_shake = None
 #         transfer_model_abs = None
 #         transfer_model_wiki = None
-        
+
 #         mode_paths = MODEL_PATHS[mode]
 #         model_args = ModelArguments(
 #             model_name_or_path=mode_paths['classifier_name'],
@@ -62,22 +62,22 @@ CORS(app)
 #             training_args.output_dir,
 #             tasks=data_args.task.split('+'),
 #             model_args=model_args,
-#             task_if_single=None, 
+#             task_if_single=None,
 #             joint = training_args.train_jointly,
 #             label_dims=label_dims
 #         )
 #         classifier_trainer = JointTrainer(
-#             [training_args,model_args, data_args], 
+#             [training_args,model_args, data_args],
 #             classifier_model, idx_to_classes = idx_to_classes
 #         )
 #         classifier_tokenizer = AutoTokenizer.from_pretrained(
-#             model_args.model_name_or_path, 
+#             model_args.model_name_or_path,
 #             cache_dir=model_args.cache_dir,
 #             model_max_length = data_args.max_seq_len
 #         )
 
 #         transfer_tokenizer = AutoTokenizer.from_pretrained(mode_paths['transfer_name'])
-#         transfer_model = AutoModelWithLMHead.from_pretrained(mode_paths['transfer'])   
+#         transfer_model = AutoModelWithLMHead.from_pretrained(mode_paths['transfer'])
 #     elif mode in ['macro-binary']:
 #         classifier_model = None
 #         transfer_model = None
@@ -87,7 +87,11 @@ CORS(app)
 #         transfer_model_shake = AutoModelWithLMHead.from_pretrained(mode_paths['transfer_shake'])
 #         transfer_model_abs = AutoModelWithLMHead.from_pretrained(mode_paths['transfer_abs'])
 #         transfer_model_wiki = AutoModelWithLMHead.from_pretrained(mode_paths['transfer_wiki'])
-        
+
+
+def sandbox_init():
+    model = AutoModelWithLMHead.from_pretrained("./t5_transfer_formality_joint_2/")
+    return model
 
 def load_models(modes):
     global classifier_tokenizer, classifier_trainers, classifier_models, transfer_models, transfer_tokenizer
@@ -122,28 +126,28 @@ def load_models(modes):
                 training_args.output_dir,
                 tasks=data_args.task.split('+'),
                 model_args=model_args,
-                task_if_single=None, 
+                task_if_single=None,
                 joint = training_args.train_jointly,
                 label_dims=label_dims
             )
             classifier_trainers[mode] = JointTrainer(
-                [training_args,model_args, data_args], 
+                [training_args,model_args, data_args],
                 classifier_models[mode], idx_to_classes = idx_to_classes
             )
-            
 
-            transfer_models[mode] = AutoModelWithLMHead.from_pretrained(mode_paths['transfer'])   
+
+            transfer_models[mode] = AutoModelWithLMHead.from_pretrained(mode_paths['transfer'])
         elif mode in ['macro-binary']:
             mode_paths = MODEL_PATHS[mode]
 
             transfer_models[mode+"-shake"] = AutoModelWithLMHead.from_pretrained(mode_paths['transfer_shake'])
             transfer_models[mode+"-abs"] = AutoModelWithLMHead.from_pretrained(mode_paths['transfer_abs'])
             transfer_models[mode+"-wiki"] = AutoModelWithLMHead.from_pretrained(mode_paths['transfer_wiki'])
-        
+
         elif mode in ['micro-joint']:
             mode_paths = MODEL_PATHS[mode]
             transfer_models[mode] = AutoModelWithLMHead.from_pretrained(mode_paths['transfer'])
-                
+
 
 @app.route("/hello")
 def hello():
@@ -163,7 +167,7 @@ def swap_models():
     except Exception as e:
        print(e)
        return {'message' : 'Models Swap Failure! :('}, 500
- 
+
     return {'message' : 'Models Swap Success! :)'}, 200
 
 
@@ -171,21 +175,21 @@ def swap_models():
 def get_joint_classify_and_salience():
     '''
     Inputs:
-    Input is assumed to be json of the form 
+    Input is assumed to be json of the form
       {text: "some text"}.
-  
+
     Results:
-      Run ML classification model on text. 
-      
+      Run ML classification model on text.
+
     Returns:
-      res: a dict containing information on 
+      res: a dict containing information on
         classification and input salience weights.
-        It has a key 'tokens' which is an array of the 
-        tokenized input text. It also has a key for each 
+        It has a key 'tokens' which is an array of the
+        tokenized input text. It also has a key for each
         classification task. Each of these are themselves
-        dicts containing keys for the predicted class, 
+        dicts containing keys for the predicted class,
         the probability of this class, and also the salience score
-        for each token from the tokenized input. 
+        for each token from the tokenized input.
     '''
     # Get text input from request
     text = request.args.get('text', type = str)
@@ -207,8 +211,8 @@ def get_joint_classify_and_salience():
         adj_len = len(token)
         sentence_seen = sentence_seen + adj_len + occ
         tokens.append({'text' : text[start:end], 'start' : start, 'end' : end})
-    
-    
+
+
     if mode=='micro-joint':
         res = classifier_trainers['micro-formality'].predict_for_sentence(lower, classifier_tokenizer, salience=True)
     else:
@@ -229,209 +233,228 @@ def get_transfer():
 
     print(controls)
     controls['suggestions'] = int(min(5,max(1,float(controls['suggestions']))))
-    if mode=="micro-formality":
-        classifier_output = classifier_trainers[mode].predict_for_sentence(lower, classifier_tokenizer, salience=False)
-        input_bucket = get_buckets(float(classifier_output['formality']['prob']), 'formality')
-        output_bucket = ['low', 'mid', 'high'][int(controls['formality'])]
-        transfer_input = "transfer: "+lower+' | input: '+input_bucket + ' | output: '+output_bucket
 
-        t = transfer_tokenizer(transfer_input, return_tensors='pt')
-        gen = transfer_models[mode].generate(input_ids= t.input_ids, attention_mask = t.attention_mask, max_length=70, 
-                                            num_beams=15,
-                                            #    early_stopping=True,
-                                            encoder_no_repeat_ngram_size=5,
-                                            no_repeat_ngram_size=3,
-                                            num_beam_groups=5,
-                                            diversity_penalty=0.5,
-                                            # num_return_sequences=int(controls['suggestions'])
-                                            num_return_sequences=10
-                                            )
-        transfers = transfer_tokenizer.batch_decode(gen, skip_special_tokens=True)
+    from transformers import T5Tokenizer, T5ForConditionalGeneration
+    tokenizer = T5Tokenizer.from_pretrained("t5-small")
 
-        res = {
-            'input' : {
-                'text' : text,
-                'probs' : {
-                    'formality' : classifier_output['formality']['prob']
-                },
-            },
-            "goal" : f"Formality : {output_bucket}",
-        }
-        suggestions = []
-        for transfer in transfers:
-            cls_opt = classifier_trainers[mode].predict_for_sentence(transfer, classifier_tokenizer, salience=False)
-            temp = {
-                'text' : transfer,
-                'probs' : {
-                    'formality' : cls_opt['formality']['prob']
-                }
-            }
-            suggestions.append(temp)
+    model = sandbox_init()
+    input_ids = tokenizer(lower, return_tensors='pt').input_ids
+    outputs = model.generate(input_ids)
+    returned = tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-        suggestions = filter_results(suggestions, ['formality'], [output_bucket])
-        suggestions = sort_results(suggestions, ['formality'], [output_bucket])
-        res['suggestions'] = suggestions[:int(controls['suggestions'])]
-        
-        if output_bucket=='high' and server_args.openai:
-            oai = get_openai_result(text)
-            cls_opt = classifier_trainers[mode].predict_for_sentence(transfer, classifier_tokenizer, salience=False)
-            temp = {
-                'text' : oai,
-                'probs' : {
-                    'formality' : cls_opt['formality']['prob']
-                }
-            }
-            res['openai'] = temp
-        else:
-            res['openai'] = {}
-        
-    elif mode=="macro-shakespeare":
-        classifier_output = classifier_trainers[mode].predict_for_sentence(lower, classifier_tokenizer, salience=False)
-        input_bucket = get_buckets(float(classifier_output['shakespeare']['prob']), 'shakespeare')
-        output_bucket = ['low', 'mid', 'high'][int(controls['shakespeare'])]
-        transfer_input = "transfer: "+lower+' | input: '+input_bucket + ' | output: '+output_bucket
-
-        t = transfer_tokenizer(transfer_input, return_tensors='pt')
-        gen = transfer_models[mode].generate(input_ids= t.input_ids, attention_mask = t.attention_mask, max_length=70, 
-                                            num_beams=15,
-                                            #    early_stopping=True,
-                                            encoder_no_repeat_ngram_size=5,
-                                            no_repeat_ngram_size=3,
-                                            num_beam_groups=5,
-                                            diversity_penalty=0.5,
-                                            # num_return_sequences=int(controls['suggestions'])
-                                            num_return_sequences=10
-                                            )
-        transfers = transfer_tokenizer.batch_decode(gen, skip_special_tokens=True)
-
-        res = {
-            'input' : {
-                'text' : text,
-                'probs' : {
-                    'shakespeare' : classifier_output['shakespeare']['prob']
-                },
-            },
-            "goal" : f"Shakespeare : {output_bucket}",
-            "suggestions":[],
-            "openai":{}
-        }
-        suggestions = []
-        for transfer in transfers:
-            cls_opt = classifier_trainers[mode].predict_for_sentence(transfer, classifier_tokenizer, salience=False)
-            temp = {
-                'text' : transfer,
-                'probs' : {
-                    'shakespeare' : cls_opt['shakespeare']['prob']
-                }
-            }
-            suggestions.append(temp)
-
-        suggestions = filter_results(suggestions, ['shakespeare'], [output_bucket])
-        suggestions = sort_results(suggestions, ['shakespeare'], [output_bucket])
-        res['suggestions'] = suggestions[:int(controls['suggestions'])]
-        
-    elif mode=="micro-joint":
-        classifier_output = classifier_trainers['micro-formality'].predict_for_sentence(lower, classifier_tokenizer, salience=False)
-        input_bucket_f = get_buckets(float(classifier_output['formality']['prob']), 'formality')
-        input_bucket_e = get_buckets(float(classifier_output['emo']['prob']), 'emo')
-        output_bucket_f = ['low', 'mid', 'high'][int(controls['formality'])]
-        output_bucket_e = ['low', 'mid', 'high'][int(controls['emo'])]
-        transfer_input = 'transfer: ' + lower + ' | input formality: '+input_bucket_f + ' | input emotion: '+input_bucket_e +' | output formality: '+output_bucket_f +' | output emotion: '+output_bucket_e
-
-        print('\n\n',transfer_input,'\n\n')
-        
-        t = transfer_tokenizer(transfer_input, return_tensors='pt')
-        gen = transfer_models[mode].generate(input_ids= t.input_ids, attention_mask = t.attention_mask, max_length=70, 
-                                            num_beams=15,
-                                            #    early_stopping=True,
-                                            encoder_no_repeat_ngram_size=5,
-                                            no_repeat_ngram_size=3,
-                                            num_beam_groups=5,
-                                            diversity_penalty=0.5,
-                                            num_return_sequences=10
-                                            # num_return_sequences=int(controls['suggestions'])
-                                            )
-        transfers = transfer_tokenizer.batch_decode(gen, skip_special_tokens=True)
-
-        res = {
-            'input' : {
-                'text' : text,
-                'probs' : {
-                    'formality' : classifier_output['formality']['prob'],
-                    'emo' : classifier_output['emo']['prob']
-                },
-            },
-            "goal" : f"Formality : {output_bucket_f}; Emotion : {output_bucket_e}",
-            "suggestions":[],
-            "openai":{}
-        }
-        suggestions = []
-        for transfer in transfers:
-            cls_opt = classifier_trainers['micro-formality'].predict_for_sentence(transfer, classifier_tokenizer, salience=False)
-            temp = {
-                'text' : transfer,
-                'probs' : {
-                    'formality' : cls_opt['formality']['prob'],
-                    'emo' : cls_opt['emo']['prob']
-                }
-            }
-            suggestions.append(temp)
-        suggestions = filter_results(suggestions, ['formality','emo'], [output_bucket_f, output_bucket_e])
-        suggestions = sort_results(suggestions,  ['formality','emo'],  [output_bucket_f, output_bucket_e])
-        res['suggestions'] = suggestions[:int(controls['suggestions'])]
-        
-        
-    elif mode=="macro-binary":
-        transfer_input = 'transfer: ' + lower
-        print('\n\n',transfer_input,'\n\n')
-        t = transfer_tokenizer(transfer_input, return_tensors='pt')
-        
-        if int(controls['macro']) == 0:
-            gen = transfer_models[mode+'-wiki'].generate(input_ids= t.input_ids, attention_mask = t.attention_mask, max_length=70, 
-                                            num_beams=12,
-                                            #    early_stopping=True,
-                                            encoder_no_repeat_ngram_size=5,
-                                            no_repeat_ngram_size=3,
-                                            num_beam_groups=3,
-                                            diversity_penalty=0.5,
-                                            num_return_sequences=int(controls['suggestions'])
-                                            )
-        elif int(controls['macro']) == 1:
-            gen = transfer_models[mode+'-shake'].generate(input_ids= t.input_ids, attention_mask = t.attention_mask, max_length=70, 
-                                            num_beams=12,
-                                            #    early_stopping=True,
-                                            encoder_no_repeat_ngram_size=5,
-                                            no_repeat_ngram_size=3,
-                                            num_beam_groups=3,
-                                            diversity_penalty=0.5,
-                                            num_return_sequences=int(controls['suggestions'])
-                                            )
-        elif int(controls['macro']) == 2:
-            gen = transfer_models[mode+'-abs'].generate(input_ids= t.input_ids, attention_mask = t.attention_mask, max_length=70, 
-                                            num_beams=12,
-                                            #    early_stopping=True,
-                                            encoder_no_repeat_ngram_size=5,
-                                            no_repeat_ngram_size=3,
-                                            num_beam_groups=3,
-                                            diversity_penalty=0.5,
-                                            num_return_sequences=int(controls['suggestions'])
-                                            )
-         
-        transfers = transfer_tokenizer.batch_decode(gen, skip_special_tokens=True)
-
-        res = {
-            'input' : {
-                'text' : text,
-            },
-            "goal" : ["Wikipedia", "Shakespeare", "Scientific Abstract"][int(controls['macro'])],
-            "suggestions":[],
-            "openai":{}
-        }
-        for transfer in transfers:
-            temp = {
-                'text' : transfer,
-            }
-            res['suggestions'].append(temp)
+    res = {'returned': returned}
+    # res = {
+    #     'input' : {
+    #         'text' : text,
+    #         'probs' : {
+    #             'formality' : classifier_output['formality']['prob']
+    #         },
+    #     },
+    #     "goal" : f"Formality : {output_bucket}",
+    # }
+    # if mode=="micro-formality":
+    #     classifier_output = classifier_trainers[mode].predict_for_sentence(lower, classifier_tokenizer, salience=False)
+    #     input_bucket = get_buckets(float(classifier_output['formality']['prob']), 'formality')
+    #     output_bucket = ['low', 'mid', 'high'][int(controls['formality'])]
+    #     transfer_input = "transfer: "+lower+' | input: '+input_bucket + ' | output: '+output_bucket
+    #
+    #     t = transfer_tokenizer(transfer_input, return_tensors='pt')
+    #     gen = transfer_models[mode].generate(input_ids= t.input_ids, attention_mask = t.attention_mask, max_length=70,
+    #                                         num_beams=15,
+    #                                         #    early_stopping=True,
+    #                                         encoder_no_repeat_ngram_size=5,
+    #                                         no_repeat_ngram_size=3,
+    #                                         num_beam_groups=5,
+    #                                         diversity_penalty=0.5,
+    #                                         # num_return_sequences=int(controls['suggestions'])
+    #                                         num_return_sequences=10
+    #                                         )
+    #     transfers = transfer_tokenizer.batch_decode(gen, skip_special_tokens=True)
+    #
+    #     res = {
+    #         'input' : {
+    #             'text' : text,
+    #             'probs' : {
+    #                 'formality' : classifier_output['formality']['prob']
+    #             },
+    #         },
+    #         "goal" : f"Formality : {output_bucket}",
+    #     }
+    #     suggestions = []
+    #     for transfer in transfers:
+    #         cls_opt = classifier_trainers[mode].predict_for_sentence(transfer, classifier_tokenizer, salience=False)
+    #         temp = {
+    #             'text' : transfer,
+    #             'probs' : {
+    #                 'formality' : cls_opt['formality']['prob']
+    #             }
+    #         }
+    #         suggestions.append(temp)
+    #
+    #     suggestions = filter_results(suggestions, ['formality'], [output_bucket])
+    #     suggestions = sort_results(suggestions, ['formality'], [output_bucket])
+    #     res['suggestions'] = suggestions[:int(controls['suggestions'])]
+    #
+    #     if output_bucket=='high' and server_args.openai:
+    #         oai = get_openai_result(text)
+    #         cls_opt = classifier_trainers[mode].predict_for_sentence(transfer, classifier_tokenizer, salience=False)
+    #         temp = {
+    #             'text' : oai,
+    #             'probs' : {
+    #                 'formality' : cls_opt['formality']['prob']
+    #             }
+    #         }
+    #         res['openai'] = temp
+    #     else:
+    #         res['openai'] = {}
+    #
+    # elif mode=="macro-shakespeare":
+    #     classifier_output = classifier_trainers[mode].predict_for_sentence(lower, classifier_tokenizer, salience=False)
+    #     input_bucket = get_buckets(float(classifier_output['shakespeare']['prob']), 'shakespeare')
+    #     output_bucket = ['low', 'mid', 'high'][int(controls['shakespeare'])]
+    #     transfer_input = "transfer: "+lower+' | input: '+input_bucket + ' | output: '+output_bucket
+    #
+    #     t = transfer_tokenizer(transfer_input, return_tensors='pt')
+    #     gen = transfer_models[mode].generate(input_ids= t.input_ids, attention_mask = t.attention_mask, max_length=70,
+    #                                         num_beams=15,
+    #                                         #    early_stopping=True,
+    #                                         encoder_no_repeat_ngram_size=5,
+    #                                         no_repeat_ngram_size=3,
+    #                                         num_beam_groups=5,
+    #                                         diversity_penalty=0.5,
+    #                                         # num_return_sequences=int(controls['suggestions'])
+    #                                         num_return_sequences=10
+    #                                         )
+    #     transfers = transfer_tokenizer.batch_decode(gen, skip_special_tokens=True)
+    #
+    #     res = {
+    #         'input' : {
+    #             'text' : text,
+    #             'probs' : {
+    #                 'shakespeare' : classifier_output['shakespeare']['prob']
+    #             },
+    #         },
+    #         "goal" : f"Shakespeare : {output_bucket}",
+    #         "suggestions":[],
+    #         "openai":{}
+    #     }
+    #     suggestions = []
+    #     for transfer in transfers:
+    #         cls_opt = classifier_trainers[mode].predict_for_sentence(transfer, classifier_tokenizer, salience=False)
+    #         temp = {
+    #             'text' : transfer,
+    #             'probs' : {
+    #                 'shakespeare' : cls_opt['shakespeare']['prob']
+    #             }
+    #         }
+    #         suggestions.append(temp)
+    #
+    #     suggestions = filter_results(suggestions, ['shakespeare'], [output_bucket])
+    #     suggestions = sort_results(suggestions, ['shakespeare'], [output_bucket])
+    #     res['suggestions'] = suggestions[:int(controls['suggestions'])]
+    #
+    # elif mode=="micro-joint":
+    #     classifier_output = classifier_trainers['micro-formality'].predict_for_sentence(lower, classifier_tokenizer, salience=False)
+    #     input_bucket_f = get_buckets(float(classifier_output['formality']['prob']), 'formality')
+    #     input_bucket_e = get_buckets(float(classifier_output['emo']['prob']), 'emo')
+    #     output_bucket_f = ['low', 'mid', 'high'][int(controls['formality'])]
+    #     output_bucket_e = ['low', 'mid', 'high'][int(controls['emo'])]
+    #     transfer_input = 'transfer: ' + lower + ' | input formality: '+input_bucket_f + ' | input emotion: '+input_bucket_e +' | output formality: '+output_bucket_f +' | output emotion: '+output_bucket_e
+    #
+    #     print('\n\n',transfer_input,'\n\n')
+    #
+    #     t = transfer_tokenizer(transfer_input, return_tensors='pt')
+    #     gen = transfer_models[mode].generate(input_ids= t.input_ids, attention_mask = t.attention_mask, max_length=70,
+    #                                         num_beams=15,
+    #                                         #    early_stopping=True,
+    #                                         encoder_no_repeat_ngram_size=5,
+    #                                         no_repeat_ngram_size=3,
+    #                                         num_beam_groups=5,
+    #                                         diversity_penalty=0.5,
+    #                                         num_return_sequences=10
+    #                                         # num_return_sequences=int(controls['suggestions'])
+    #                                         )
+    #     transfers = transfer_tokenizer.batch_decode(gen, skip_special_tokens=True)
+    #
+    #     res = {
+    #         'input' : {
+    #             'text' : text,
+    #             'probs' : {
+    #                 'formality' : classifier_output['formality']['prob'],
+    #                 'emo' : classifier_output['emo']['prob']
+    #             },
+    #         },
+    #         "goal" : f"Formality : {output_bucket_f}; Emotion : {output_bucket_e}",
+    #         "suggestions":[],
+    #         "openai":{}
+    #     }
+    #     suggestions = []
+    #     for transfer in transfers:
+    #         cls_opt = classifier_trainers['micro-formality'].predict_for_sentence(transfer, classifier_tokenizer, salience=False)
+    #         temp = {
+    #             'text' : transfer,
+    #             'probs' : {
+    #                 'formality' : cls_opt['formality']['prob'],
+    #                 'emo' : cls_opt['emo']['prob']
+    #             }
+    #         }
+    #         suggestions.append(temp)
+    #     suggestions = filter_results(suggestions, ['formality','emo'], [output_bucket_f, output_bucket_e])
+    #     suggestions = sort_results(suggestions,  ['formality','emo'],  [output_bucket_f, output_bucket_e])
+    #     res['suggestions'] = suggestions[:int(controls['suggestions'])]
+    #
+    #
+    # elif mode=="macro-binary":
+    #     transfer_input = 'transfer: ' + lower
+    #     print('\n\n',transfer_input,'\n\n')
+    #     t = transfer_tokenizer(transfer_input, return_tensors='pt')
+    #
+    #     if int(controls['macro']) == 0:
+    #         gen = transfer_models[mode+'-wiki'].generate(input_ids= t.input_ids, attention_mask = t.attention_mask, max_length=70,
+    #                                         num_beams=12,
+    #                                         #    early_stopping=True,
+    #                                         encoder_no_repeat_ngram_size=5,
+    #                                         no_repeat_ngram_size=3,
+    #                                         num_beam_groups=3,
+    #                                         diversity_penalty=0.5,
+    #                                         num_return_sequences=int(controls['suggestions'])
+    #                                         )
+    #     elif int(controls['macro']) == 1:
+    #         gen = transfer_models[mode+'-shake'].generate(input_ids= t.input_ids, attention_mask = t.attention_mask, max_length=70,
+    #                                         num_beams=12,
+    #                                         #    early_stopping=True,
+    #                                         encoder_no_repeat_ngram_size=5,
+    #                                         no_repeat_ngram_size=3,
+    #                                         num_beam_groups=3,
+    #                                         diversity_penalty=0.5,
+    #                                         num_return_sequences=int(controls['suggestions'])
+    #                                         )
+    #     elif int(controls['macro']) == 2:
+    #         gen = transfer_models[mode+'-abs'].generate(input_ids= t.input_ids, attention_mask = t.attention_mask, max_length=70,
+    #                                         num_beams=12,
+    #                                         #    early_stopping=True,
+    #                                         encoder_no_repeat_ngram_size=5,
+    #                                         no_repeat_ngram_size=3,
+    #                                         num_beam_groups=3,
+    #                                         diversity_penalty=0.5,
+    #                                         num_return_sequences=int(controls['suggestions'])
+    #                                         )
+    #
+    #     transfers = transfer_tokenizer.batch_decode(gen, skip_special_tokens=True)
+    #
+    #     res = {
+    #         'input' : {
+    #             'text' : text,
+    #         },
+    #         "goal" : ["Wikipedia", "Shakespeare", "Scientific Abstract"][int(controls['macro'])],
+    #         "suggestions":[],
+    #         "openai":{}
+    #     }
+    #     for transfer in transfers:
+    #         temp = {
+    #             'text' : transfer,
+    #         }
+    #         res['suggestions'].append(temp)
     return res, 200
 
 def load_openai_key():
@@ -453,7 +476,7 @@ def get_openai_result(text):
    return res.choices[0].text.strip()
 
 if __name__ == '__main__':
-    load_models(['micro-formality','macro-shakespeare','micro-joint','macro-binary'])
+    # load_models(['micro-formality','macro-shakespeare','micro-joint','macro-binary'])
     # print(transfer_models.keys())
     parser = argparse.ArgumentParser()
     parser.add_argument('--openai', help='Use openai API or not', default=False)
@@ -462,5 +485,5 @@ if __name__ == '__main__':
 
     if server_args.openai==True:
         load_openai_key()
-    
+
     app.run(host="0.0.0.0", port=5001)
