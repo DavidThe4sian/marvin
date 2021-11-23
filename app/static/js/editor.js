@@ -1,7 +1,7 @@
 import { displayHeatmap, displayJointHeatmap, setProgress, setSliders, displayModal, displayExamples } from "./display.js";
 
 var attentionViz = 'none';
-var styleMode = 'micro-formality';
+var styleMode = 'micro-joint';
 var editorText = '';
 
 let examples = {
@@ -52,6 +52,7 @@ displayExamples(quillEditor, examples, styleMode);
 
 const formalitylabels = ['Informal', 'Neutral', 'Formal']
 const emolabels = ['Sad', 'Neutral', 'Happy']
+const pollabels = ['Rude', 'Neutral', 'Polite']
 const shakelabels = ['Normal', 'Mid', 'High']
 const binLabels = ['Wiki', 'Shakespeare', 'Abstract']
 
@@ -81,6 +82,15 @@ $('#emo-slider-micro-joint').slider({
     step: 1,
     interpretLabel: function (value) {
         return emolabels[value];
+    }
+});
+$('#politeness-slider-micro-joint').slider({
+    min: 0,
+    max: 2,
+    start: 0,
+    step: 1,
+    interpretLabel: function (value) {
+        return pollabels[value];
     }
 });
 
@@ -113,24 +123,25 @@ $('.viz').click((e) => {
 
 $('.dropdown').dropdown({
     values: [
-        {
-            name: 'Micro Styles (Formality)',
-            value: 'micro-formality',
-            selected: true
+        // {
+        //     name: 'Micro Styles (Formality)',
+        //     value: 'micro-formality',
+        //     selected: true
 
-        },
+        // },
         {
             name: 'Micro Styles (Joint)',
             value: 'micro-joint',
+            selected: true
         },
-        {
-            name: 'Macro Styles (Shakespeare)',
-            value: 'macro-shakespeare',
-        },
-        {
-            name: 'Macro Styles (Binary)',
-            value: 'macro-binary',
-        }
+        // {
+        //     name: 'Macro Styles (Shakespeare)',
+        //     value: 'macro-shakespeare',
+        // },
+        // {
+        //     name: 'Macro Styles (Binary)',
+        //     value: 'macro-binary',
+        // }
     ]
 }).dropdown({
     onChange: function (value, text, $selectedItem) {
@@ -170,6 +181,35 @@ $('.dropdown').dropdown({
     }
 });
 
+$('#checkbox-formality').checkbox({
+    onChecked: function() {
+        $('#formality-slider-micro-joint').show();
+    },
+    onUnchecked: function() {
+        $('#formality-slider-micro-joint').hide();
+    }
+});
+$('#checkbox-emotion').checkbox({
+    onChecked: function() {
+        $('#emo-slider-micro-joint').show();
+    },
+    onUnchecked: function() {
+        $('#emo-slider-micro-joint').hide();
+    }
+});
+$('#checkbox-politeness').checkbox({
+    onChecked: function() {
+        $('#politeness-slider-micro-joint').show();
+    },
+    onUnchecked: function() {
+        $('#politeness-slider-micro-joint').hide();
+    }
+});
+
+// $('#checkbox-politeness').click(() => {
+//     console.log('clicked');
+// })
+
 $('.analyze').click(() => {
     let txt = editorText;
     let modeSelected = styleMode;
@@ -194,6 +234,7 @@ $('.transfer').click(() => {
     let txt = editorText;
     let modeSelected = styleMode;
     let controls = {}
+    let styles = ''
     if (styleMode === "micro-formality") {
         controls = {
             formality: $('#formality-slider-micro-formality').slider('get value'),
@@ -204,7 +245,21 @@ $('.transfer').click(() => {
         controls = {
             formality: $('#formality-slider-micro-joint').slider('get value'),
             emo: $('#emo-slider-micro-joint').slider('get value'),
-            suggestions: $('#num-suggestions-micro-joint').val(),
+            politeness: $('#politeness-slider-micro-joint').slider('get value'),
+            // suggestions: $('#num-suggestions-micro-joint').val(),
+            suggestions: 3,
+        }
+        let isPoliteness = $('#checkbox-politeness').checkbox('is checked');
+        let isEmo = $('#checkbox-emotion').checkbox('is checked');
+        let isFormality = $('#checkbox-formality').checkbox('is checked');
+        // console.log('wtf')
+        if (isPoliteness && isEmo) {
+            styles = 'politeness_emo';
+        } 
+        else if (isPoliteness && isFormality) {
+            styles = 'politeness_formality';
+        } else {
+            styles = 'formality_emo';
         }
     }
     else if (styleMode === "macro-shakespeare") {
@@ -220,45 +275,56 @@ $('.transfer').click(() => {
         }
     }
 
-
+    console.log('styles' + styles)
+    console.log(JSON.stringify(controls));
     $.ajax({
         url: '/transfer',
         crossDomain: true,
         dataType: 'json',
-        data: { text: txt, controls: JSON.stringify(controls), mode: modeSelected },
+        data: { text: txt, controls: JSON.stringify(controls), mode: modeSelected, style: styles },
         success: (d) => {
             console.log(d);
-            displayModal(d, styleMode);
-            function selectSuggestion() {
-                let k = $(this).data('suggestion-id');
-                // console.log(k, d.suggestions[k]);
-                quillEditor.setContents([{ insert: d.suggestions[k].text }]);
-                $('#transfer-suggestions')
-                    .modal('hide');
-                console.log('Sending mysql request');
-                $.ajax({
-                    url: '/transfer_action',
-                    method: "POST",
-                    crossDomain: true,
-                    dataType: 'json',
-                    data: {
-                        mode: modeSelected, goal: d.goal, original: d.input.text, original_val: JSON.stringify(d.input.probs),
-                        accepted: d.suggestions[k].text, accepted_val: JSON.stringify(d.suggestions[k].probs)
-                    },
-                    success: (d) => {
-                        console.log(d);
-
-                    },
-                });
-            };
-            $('.suggestion-item').click(selectSuggestion);
-            $('#transfer-suggestions')
-                .modal({
-                    onHide: function () {
-                        $('.suggestion-item').unbind('click', selectSuggestion);
-                    }
-                })
-                .modal('show');
+            let returnString = d['returned']
+            console.log(returnString);
+            console.log($('#transfer-results'));
+            var constructedHtml = "<ol>";
+            for(var i = 0; i < returnString.length; i++) {
+                constructedHtml += "<li>" + returnString[i] + "</li>";
+            }
+            constructedHtml += "</ol>";
+            $('#transfer-results').html(constructedHtml);
+            // $('#transfer-results').html('<p>' + 
+            // returnString + '</p>');
+            // displayModal(d, styleMode);
+            // function selectSuggestion() {
+            //     let k = $(this).data('suggestion-id');
+            //     // console.log(k, d.suggestions[k]);
+            //     quillEditor.setContents([{ insert: d.suggestions[k].text }]);
+            //     $('#transfer-suggestions')
+            //         .modal('hide');
+            //     console.log('Sending mysql request');
+            //     $.ajax({
+            //         url: '/transfer_action',
+            //         method: "POST",
+            //         crossDomain: true,
+            //         dataType: 'json',
+            //         data: {
+            //             mode: modeSelected, goal: d.goal, original: d.input.text, original_val: JSON.stringify(d.input.probs),
+            //             accepted: d.suggestions[k].text, accepted_val: JSON.stringify(d.suggestions[k].probs)
+            //         },
+            //         success: (d) => {
+            //             console.log(d);
+            //         },
+            //     });
+            // };
+            // $('.suggestion-item').click(selectSuggestion);
+            // $('#transfer-suggestions')
+            //     .modal({
+            //         onHide: function () {
+            //             $('.suggestion-item').unbind('click', selectSuggestion);
+            //         }
+            //     })
+            //     .modal('show');
 
 
         }

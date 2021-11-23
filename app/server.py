@@ -80,13 +80,16 @@ def get_stats():
 @app.route('/transfer', methods=['GET'])
 def get_transfer_suggestions():
     # Get text input from request
+    print('ENTERED TRANSFER')
     text = request.args.get('text', type=str).strip()
     controls = request.args.get('controls', type=str)
     mode = request.args.get('mode', type=str)
+    style = request.args.get('style', type=str)
 
+    print(style)
+    print('WE CAN MAKE A CHANGE')
     response_transfer = requests.get('http://0.0.0.0:5001/transfer', \
-                                     params={'text': text, 'mode': mode, 'controls': controls}).json()
-    print('hi')
+                                     params={'text': text, 'mode': mode, 'controls': controls, 'style': style}).json()
     print(response_transfer)
     return response_transfer, 200
 

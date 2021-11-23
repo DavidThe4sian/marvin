@@ -26,6 +26,9 @@ from utils import get_buckets, bucket_match, sort_results, filter_results
 import openai
 import argparse
 
+from transformers import T5Tokenizer, T5ForConditionalGeneration
+
+
 app = Flask(__name__)
 CORS(app)
 
@@ -90,8 +93,12 @@ CORS(app)
 
 
 def sandbox_init():
-    model = AutoModelWithLMHead.from_pretrained("./t5_transfer_formality_joint_2/")
-    return model
+    global formality_emo, tokenizer, politeness_emo
+    tokenizer = AutoTokenizer.from_pretrained("t5-small", model_max_length=64)
+    formality_emo = AutoModelWithLMHead.from_pretrained("./t5_transfer_formality_joint_2/")
+    politeness_emo = AutoModelWithLMHead.from_pretrained("./t5_transfer_politeness_emo/")
+    # tokenizer = T5Tokenizer.from_pretrained("t5-small")
+    # return model
 
 def load_models(modes):
     global classifier_tokenizer, classifier_trainers, classifier_models, transfer_models, transfer_tokenizer
@@ -225,24 +232,55 @@ def get_transfer():
     # Get text input from request
     text = request.args.get('text', type = str)
     mode = request.args.get('mode', type = str)
+    styles = request.args.get('style', type = str)
     controls = request.args.get('controls', type = str)
     text = text.strip()
     # lower = text.lower()
-    lower = text
+    lower = text.lower()
     controls = json.loads(controls)
 
     print(controls)
     controls['suggestions'] = int(min(5,max(1,float(controls['suggestions']))))
 
-    from transformers import T5Tokenizer, T5ForConditionalGeneration
-    tokenizer = T5Tokenizer.from_pretrained("t5-small")
+    # from transformers import T5Tokenizer, T5ForConditionalGeneration
+    # tokenizer = T5Tokenizer.from_pretrained("t5-small")
 
-    model = sandbox_init()
-    input_ids = tokenizer(lower, return_tensors='pt').input_ids
-    outputs = model.generate(input_ids)
-    returned = tokenizer.decode(outputs[0], skip_special_tokens=True)
-
-    res = {'returned': returned}
+    # model = sandbox_init()
+    # prefix = 'translate English to German: '
+    if styles=='formality_emo':
+        t = tokenizer(lower, return_tensors='pt')
+        outputs = formality_emo.generate(t.input_ids, 
+                                attention_mask=t.attention_mask,
+                                max_length=50, 
+                                num_beams=9,
+                                early_stopping=True,
+                                encoder_no_repeat_ngram_size=5,
+                                no_repeat_ngram_size=4,
+                                num_beam_groups=3,
+                                diversity_penalty=0.5,
+                                num_return_sequences=3)
+        paras = tokenizer.batch_decode(outputs.detach().cpu().numpy(), skip_special_tokens=True)
+        # returned = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        print(paras)
+        res = {'returned': paras}
+        return res, 200
+    elif styles=='politeness_emo':
+        t = tokenizer(lower, return_tensors='pt')
+        outputs = politeness_emo.generate(t.input_ids, 
+                                attention_mask=t.attention_mask,
+                                max_length=50, 
+                                num_beams=9,
+                                early_stopping=True,
+                                encoder_no_repeat_ngram_size=5,
+                                no_repeat_ngram_size=4,
+                                num_beam_groups=3,
+                                diversity_penalty=0.5,
+                                num_return_sequences=3)
+        paras = tokenizer.batch_decode(outputs.detach().cpu().numpy(), skip_special_tokens=True)
+        # returned = tokenizer.decode(outputs[0], skip_special_tokens=True)
+        print(paras)
+        res = {'returned': paras}
+        return res, 200
     # res = {
     #     'input' : {
     #         'text' : text,
@@ -455,7 +493,7 @@ def get_transfer():
     #             'text' : transfer,
     #         }
     #         res['suggestions'].append(temp)
-    return res, 200
+    # return res, 200
 
 def load_openai_key():
     with open("./key.txt") as fob:
@@ -482,6 +520,7 @@ if __name__ == '__main__':
     parser.add_argument('--openai', help='Use openai API or not', default=False)
     global server_args
     server_args = parser.parse_args()
+    sandbox_init()
 
     if server_args.openai==True:
         load_openai_key()

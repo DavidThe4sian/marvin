@@ -31,13 +31,18 @@
                             </div>
                         </div>
                     </div>
-                    <div id="examples-section">
+                    <div id="transfer-result-section">
+                        <h3>Transfer Result(s)</h3>
+                        <div id=transfer-results></div>
+                        
+                    </div>
+                    <!-- <div id="examples-section">
                         <p class="side-section-header left-section-header">Examples</p>
                         <div class="ui divider"></div>
 
                         <div id="examples">
                         </div>
-                    </div>
+                    </div> -->
                 </div>
                 <div class="col-xs-4">
                     <div id="mode-selector" class="start-xs mode-container">
@@ -102,7 +107,32 @@
                     </div>
                     <!-----Micro Joint Panels --->
                     <div id="preview-container-micro-joint" class="start-xs preview-container">
-                        <div id="analysis-section-micro-joint" class="side-section">
+                        <div id="attributes-section-micro-joint" class="side-section">
+                            <p class="side-section-header">Select Attributes</p>
+                            <div class="ui divider"></div>
+                            <div class="ui checkbox" id="checkbox-formality">
+                                <input type="checkbox">
+                                <label>Formality</label>
+                            </div>
+                            <div class="ui checkbox" id="checkbox-emotion">
+                                <input type="checkbox">
+                                <label>Emotion</label>
+                            </div>
+                            <div class="ui checkbox" id="checkbox-politeness">
+                                <input type="checkbox">
+                                <label>Politeness</label>
+                            </div>
+                            <!-- <div class="checkbox" id="checkbox-formality">
+                                <label><input type="checkbox" value="">Formality</label>
+                            </div>
+                            <div class="checkbox" id="checkbox-emotion">
+                                <label><input type="checkbox" value="">Emotion</label>
+                            </div>
+                            <div class="checkbox" id="checkbox-politeness">
+                                <label><input type="checkbox" value="">Politeness</label>
+                            </div> -->
+                        </div>
+                        <!-- <div id="analysis-section-micro-joint" class="side-section">
                             <p class="side-section-header">Analysis</p>
                             <div class="ui divider"></div>
                             <div id="formality-progress-micro-joint" class="ui tiny teal progress" data-value="0"
@@ -129,7 +159,7 @@
                                     id="analyze-micro-joint">Analyze</button>
                             </div>
 
-                        </div>
+                        </div> -->
 
                         <div id="transfer-section-micro-joint" class="side-section">
                             <p class="side-section-header">Style Transfer Controls</p>
@@ -137,18 +167,19 @@
 
                             <div id="sliders">
                                 <p class="label-text">Formality</p>
-                                <div class="ui teal slider labeled ticked" id="formality-slider-micro-joint">
-                                </div>
+                                <div class="ui teal slider labeled ticked" id="formality-slider-micro-joint"></div>
                                 <p class="label-text">Emotion</p>
                                 <div class="ui yellow slider labeled ticked" id="emo-slider-micro-joint"></div>
+                                <p class="label-text">Politeness</p>
+                                <div class="ui red slider labeled ticked" id="politeness-slider-micro-joint"></div>
                             </div>
 
-                            <div class="row center-xs middle-xs">
+                            <!-- <div class="row center-xs middle-xs">
                                 <p style="margin:0px">Number of Suggestions</p>
                                 <div class="ui input col-xs-3">
                                     <input id="num-suggestions-micro-joint" type="text" placeholder="3" value=3>
                                 </div>
-                            </div>
+                            </div> -->
                             <div class="row center-xs middle-xs">
                                 <button class="ui red button col-xs-10 transfer"
                                     id="transfer-micro-joint">Transfer</button>
