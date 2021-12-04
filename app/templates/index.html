@@ -16,7 +16,7 @@
     <div id="main" class="row center-xs">
         <div id="section_1" class="col-xs-8">
             <!-- <p id="app-title">marvin</p> -->
-            <a href="/"><img class="col-xs-6 col-md-2" src="/res/marvin.jpg"></a>
+            <a href="/"><img class="col-xs-6 col-md-2" src="/res/nlp_logo.png"></a>
             <div class="ui dimmer" id="dimmer-model-swap">
                 <div class="ui text loader">Loading Models...</div>
             </div>
@@ -32,7 +32,9 @@
                         </div>
                     </div>
                     <div id="transfer-result-section">
-                        <h3>Transfer Result(s)</h3>
+                        <p class="section-header">Transfer Result(s)</p>
+                        <div class="ui divider"></div>
+
                         <div id=transfer-results></div>
                         
                     </div>
@@ -163,15 +165,30 @@
 
                         <div id="transfer-section-micro-joint" class="side-section">
                             <p class="side-section-header">Style Transfer Controls</p>
-                            <div class="ui divider"></div>
+                            <!-- <p>scuffed but top one is in, bottom is desired out</p>
+                            <div class="ui divider"></div> -->
 
                             <div id="sliders">
+                                <div class='sliderbox' id="form-sliders">
                                 <p class="label-text">Formality</p>
+                                <p>Input</p>                                <div class="ui teal slider labeled ticked" id="formality-input-slider-micro-joint"></div>
+                                <p>Output</p>
                                 <div class="ui teal slider labeled ticked" id="formality-slider-micro-joint"></div>
+                                </div>
+                                <div class='sliderbox' id="emo-sliders">
                                 <p class="label-text">Emotion</p>
+                                <p>Input</p>
+                                <div class="ui yellow slider labeled ticked" id="emo-input-slider-micro-joint"></div>
+                                <p>Output</p>
                                 <div class="ui yellow slider labeled ticked" id="emo-slider-micro-joint"></div>
+                                </div>
+                                <div class='sliderbox' id="pol-sliders">
                                 <p class="label-text">Politeness</p>
+                                <p>Input</p>
+                                <div class="ui red slider labeled ticked" id="politeness-input-slider-micro-joint"></div>
+                                <p>Output</p>
                                 <div class="ui red slider labeled ticked" id="politeness-slider-micro-joint"></div>
+                                </div>
                             </div>
 
                             <!-- <div class="row center-xs middle-xs">

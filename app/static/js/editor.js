@@ -56,41 +56,70 @@ const pollabels = ['Rude', 'Neutral', 'Polite']
 const shakelabels = ['Normal', 'Mid', 'High']
 const binLabels = ['Wiki', 'Shakespeare', 'Abstract']
 
+const sliderLabels = ['Very Low', 'Low', 'Mid', 'High', 'Very High'];
+
 $('#formality-slider-micro-formality').slider({
     min: 0,
-    max: 2,
+    max: 4,
     start: 0,
     step: 1,
     interpretLabel: function (value) {
-        return formalitylabels[value];
+        return sliderLabels[value];
     }
 });
 
 $('#formality-slider-micro-joint').slider({
     min: 0,
-    max: 2,
+    max: 4,
     start: 0,
     step: 1,
     interpretLabel: function (value) {
-        return formalitylabels[value];
+        return sliderLabels[value];
     }
 });
 $('#emo-slider-micro-joint').slider({
     min: 0,
-    max: 2,
+    max: 4,
     start: 0,
     step: 1,
     interpretLabel: function (value) {
-        return emolabels[value];
+        return sliderLabels[value];
     }
 });
 $('#politeness-slider-micro-joint').slider({
     min: 0,
-    max: 2,
+    max: 4,
     start: 0,
     step: 1,
     interpretLabel: function (value) {
-        return pollabels[value];
+        return sliderLabels[value];
+    }
+});
+$('#formality-input-slider-micro-joint').slider({
+    min: 0,
+    max: 4,
+    start: 0,
+    step: 1,
+    interpretLabel: function (value) {
+        return sliderLabels[value];
+    }
+});
+$('#emo-input-slider-micro-joint').slider({
+    min: 0,
+    max: 4,
+    start: 0,
+    step: 1,
+    interpretLabel: function (value) {
+        return sliderLabels[value];
+    }
+});
+$('#politeness-input-slider-micro-joint').slider({
+    min: 0,
+    max: 4,
+    start: 0,
+    step: 1,
+    interpretLabel: function (value) {
+        return sliderLabels[value];
     }
 });
 
@@ -183,26 +212,39 @@ $('.dropdown').dropdown({
 
 $('#checkbox-formality').checkbox({
     onChecked: function() {
-        $('#formality-slider-micro-joint').show();
+        $('#form-sliders').show();
+        // $('#formality-slider-micro-joint').show();
+        // $('#formality-input-slider-micro-joint').show();
     },
     onUnchecked: function() {
-        $('#formality-slider-micro-joint').hide();
+        $('#form-sliders').hide();
+        // $('#formality-slider-micro-joint').hide();
+        // $('#formality-input-slider-micro-joint').hide();
     }
 });
 $('#checkbox-emotion').checkbox({
     onChecked: function() {
-        $('#emo-slider-micro-joint').show();
+        $('#emo-sliders').show();
+        // $('#emo-slider-micro-joint').show();
+        // $('#emo-input-slider-micro-joint').show();
     },
     onUnchecked: function() {
-        $('#emo-slider-micro-joint').hide();
+        $('#emo-sliders').hide();
+        // $('#emo-slider-micro-joint').hide();
+        // $('#emo-input-slider-micro-joint').hide();
     }
 });
 $('#checkbox-politeness').checkbox({
     onChecked: function() {
-        $('#politeness-slider-micro-joint').show();
+        $('#pol-sliders').show();
+        // $('#politeness-slider-micro-joint').show();
+        // $('#politeness-input-slider-micro-joint').show();
+
     },
     onUnchecked: function() {
-        $('#politeness-slider-micro-joint').hide();
+        $('#pol-sliders').hide();
+        // $('#politeness-slider-micro-joint').hide();
+        // $('#politeness-input-slider-micro-joint').hide();
     }
 });
 
@@ -246,6 +288,9 @@ $('.transfer').click(() => {
             formality: $('#formality-slider-micro-joint').slider('get value'),
             emo: $('#emo-slider-micro-joint').slider('get value'),
             politeness: $('#politeness-slider-micro-joint').slider('get value'),
+            formIn: $('#formality-input-slider-micro-joint').slider('get value'),
+            emoIn: $('#emo-input-slider-micro-joint').slider('get value'),
+            polIn: $('#politeness-input-slider-micro-joint').slider('get value'),
             // suggestions: $('#num-suggestions-micro-joint').val(),
             suggestions: 3,
         }

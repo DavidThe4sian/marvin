@@ -83,6 +83,8 @@
 
 #main{
     min-height: 100vh;
+    margin-bottom: 30px;
+    padding-bottom: 30px;
 }
 
 /* #preview{
@@ -103,14 +105,22 @@
     margin: 20px 0px 40px 0px !important;
 }
 .slider{
-    margin: 15px 0px 15pxpx 0px !important;
-    display: none;
+    margin: 15px 0px 15px 0px !important;
+    /* display: none; */
 }
 
 .side-section-header{
     font-weight: 800;
     letter-spacing: 10px;
     text-transform: uppercase;
+}
+
+.section-header{
+    font-weight: 800;
+    letter-spacing: 10px;
+    text-transform: uppercase;
+    margin-left: 20px;
+    margin-top: 10px !important;
 }
 
 .button{
@@ -139,6 +149,10 @@ label input {
     text-align: center;
     -webkit-transition: color .4s ease;
     transition: color .4s ease;
+}
+
+.sliderbox {
+    display: none;
 }
 
 .original{
