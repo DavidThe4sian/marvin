@@ -95,33 +95,7 @@ $('#politeness-slider-micro-joint').slider({
         return sliderLabels[value];
     }
 });
-$('#formality-input-slider-micro-joint').slider({
-    min: 0,
-    max: 4,
-    start: 0,
-    step: 1,
-    interpretLabel: function (value) {
-        return sliderLabels[value];
-    }
-});
-$('#emo-input-slider-micro-joint').slider({
-    min: 0,
-    max: 4,
-    start: 0,
-    step: 1,
-    interpretLabel: function (value) {
-        return sliderLabels[value];
-    }
-});
-$('#politeness-input-slider-micro-joint').slider({
-    min: 0,
-    max: 4,
-    start: 0,
-    step: 1,
-    interpretLabel: function (value) {
-        return sliderLabels[value];
-    }
-});
+
 
 $('#shakespeare-slider-macro-shakespeare').slider({
     min: 0,
@@ -213,44 +187,27 @@ $('.dropdown').dropdown({
 $('#checkbox-formality').checkbox({
     onChecked: function() {
         $('#form-sliders').show();
-        // $('#formality-slider-micro-joint').show();
-        // $('#formality-input-slider-micro-joint').show();
     },
     onUnchecked: function() {
         $('#form-sliders').hide();
-        // $('#formality-slider-micro-joint').hide();
-        // $('#formality-input-slider-micro-joint').hide();
     }
 });
 $('#checkbox-emotion').checkbox({
     onChecked: function() {
         $('#emo-sliders').show();
-        // $('#emo-slider-micro-joint').show();
-        // $('#emo-input-slider-micro-joint').show();
     },
     onUnchecked: function() {
         $('#emo-sliders').hide();
-        // $('#emo-slider-micro-joint').hide();
-        // $('#emo-input-slider-micro-joint').hide();
     }
 });
 $('#checkbox-politeness').checkbox({
     onChecked: function() {
         $('#pol-sliders').show();
-        // $('#politeness-slider-micro-joint').show();
-        // $('#politeness-input-slider-micro-joint').show();
-
     },
     onUnchecked: function() {
         $('#pol-sliders').hide();
-        // $('#politeness-slider-micro-joint').hide();
-        // $('#politeness-input-slider-micro-joint').hide();
     }
 });
-
-// $('#checkbox-politeness').click(() => {
-//     console.log('clicked');
-// })
 
 $('.analyze').click(() => {
     let txt = editorText;
@@ -288,9 +245,6 @@ $('.transfer').click(() => {
             formality: $('#formality-slider-micro-joint').slider('get value'),
             emo: $('#emo-slider-micro-joint').slider('get value'),
             politeness: $('#politeness-slider-micro-joint').slider('get value'),
-            formIn: $('#formality-input-slider-micro-joint').slider('get value'),
-            emoIn: $('#emo-input-slider-micro-joint').slider('get value'),
-            polIn: $('#politeness-input-slider-micro-joint').slider('get value'),
             // suggestions: $('#num-suggestions-micro-joint').val(),
             suggestions: 3,
         }
@@ -332,11 +286,39 @@ $('.transfer').click(() => {
             let returnString = d['returned']
             console.log(returnString);
             console.log($('#transfer-results'));
-            var constructedHtml = "<ol>";
+            // var constructedHtml = "<ol>";
+            // for(var i = 0; i < returnString.length; i++) {
+            //     constructedHtml += "<li>" + returnString[i] + "</li>";
+            // }
+            // constructedHtml += "</ol>";
+            var constructedHtml = "<table>\
+            <tr><th>original\
+            </th><th>transformed</th>\
+            </tr>";
+            var ops = d['ops']
             for(var i = 0; i < returnString.length; i++) {
-                constructedHtml += "<li>" + returnString[i] + "</li>";
+                var original = Array.from(txt.toLowerCase());
+                var newString = Array.from(returnString[i]);
+                var op = ops[i]
+                for(var j = op.length-1; j>=0 ; j--){
+                    var indexOne = op[j][1]
+                    var index = op[j][2]
+                    if(op[j][0] == 'replace') {
+                        newString[index] = "<span class='highlight'>"  + newString[index] + "</span>";
+                        original[indexOne] = "<span class='redHighlight'>"  + original[indexOne] + "</span>";
+                    }
+                    else if (op[j][0] == 'insert') {
+                        newString[index] = "<span class='highlight'>"  + newString[index] + "</span>";
+                    }
+                    else {
+                        original[indexOne] = "<span class='redHighlight'>"  + original[indexOne] + "</span>"
+                    }
+                    // original = original.substring(0,index) + "<span class='highlight'>" + original.substring(index,index+1) + "</span>" + original.substring(index, original.length);
+                }
+                constructedHtml += "<tr><td>"+original.join('')+"</td><td>"+newString.join('')+"</td></tr>";
             }
-            constructedHtml += "</ol>";
+            constructedHtml += "</table>";
+            // constructedHtml += temp;
             $('#transfer-results').html(constructedHtml);
             // $('#transfer-results').html('<p>' + 
             // returnString + '</p>');

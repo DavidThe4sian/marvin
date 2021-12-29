@@ -28,6 +28,9 @@ import argparse
 
 from transformers import T5Tokenizer, T5ForConditionalGeneration
 
+import Levenshtein as lev
+import difflib as dl;
+
 
 app = Flask(__name__)
 CORS(app)
@@ -176,24 +179,20 @@ def get_transfer():
     styles = request.args.get('style', type = str)
     controls = request.args.get('controls', type = str)
     text = text.strip()
-    # lower = text.lower()
     lower = text.lower()
     controls = json.loads(controls)
-    conversion = ['very low', 'mid', 'very high']
-
+    conversion = ['very low', 'low', 'mid', 'high', 'very high']
+    paras = []
     print(controls)
     controls['suggestions'] = int(min(5,max(1,float(controls['suggestions']))))
 
-    # model = sandbox_init()
     if styles=='formality_emo':
         form_level = conversion[controls['formality']]
         emo_level = conversion[controls['emo']]
-        form_in = conversion[controls['formIn']]
-        emo_in = conversion[controls['emoIn']]
         # Say these are the values you are getting from the GUI
-# transfer: did you hear about his problems, lol | input politeness: low | input emotion: low | output politeness: high | output emotion: high
-        chunk = [text, form_in, emo_in, form_level, emo_level]
-        temp = 'transfer: ' + chunk[0] + ' | input formality: '+chunk[1] + ' | input emotion: '+chunk[2] +' | output formality: '+chunk[3] +' | output emotion: '+chunk[4]
+        # transfer: did you hear about his problems, lol | input politeness: low | input emotion: low | output politeness: high | output emotion: high
+        chunk = [text, form_level, emo_level]
+        temp = 'transfer: ' + chunk[0] + ' | output formality: '+chunk[1] +' | output emotion: '+chunk[2]
         print(temp)
         tokenized = tokenizer([temp], padding='max_length', return_tensors='pt', truncation = False)
         all_input_ids, all_attention_mask = tokenized['input_ids'], tokenized['attention_mask']
@@ -210,25 +209,7 @@ def get_transfer():
                             diversity_penalty=0.3,
                         )
         paras = tokenizer.batch_decode(outputs, skip_special_tokens=True)
-        # returned = paras
-        # print(para_tokenizer.batch_decode(output_sequences, skip_special_tokens=True))
-        #         t = tokenizer(lower, return_tensors='pt')
-        # print(t.input_ids)
-        # outputs = formality_emo.generate(t.input_ids, 
-        #                         attention_mask=t.attention_mask,
-        #                         max_length=50, 
-        #                         num_beams=9,
-        #                         early_stopping=True,
-        #                         encoder_no_repeat_ngram_size=5,
-        #                         no_repeat_ngram_size=4,
-        #                         num_beam_groups=3,
-        #                         diversity_penalty=0.5,
-        #                         num_return_sequences=3)
-        # paras = tokenizer.batch_decode(outputs.detach().cpu().numpy(), skip_special_tokens=True)
-        # returned = tokenizer.decode(outputs[0], skip_special_tokens=True)
         print(paras)
-        res = {'returned': paras}
-        return res, 200
     elif styles=='politeness_emo':
         form_level = controls['formality']
         emo_level = controls['emo']
@@ -246,8 +227,24 @@ def get_transfer():
         paras = tokenizer.batch_decode(outputs.detach().cpu().numpy(), skip_special_tokens=True)
         # returned = tokenizer.decode(outputs[0], skip_special_tokens=True)
         print(paras)
-        res = {'returned': paras}
-        return res, 200
+    
+    edit_ops = []
+    for para in paras:
+        temp = []
+        ops = lev.editops(lower, para)
+        print(ops)
+        for op in ops:
+            temp.append(op)
+        edit_ops.append(temp)
+        # print(lev.distance(lower, para))
+    print('TRYING DIFFLIB')
+    for para in paras:
+        for diff in dl.context_diff(lower.split(' '), para.split(' ')):
+            print(diff)
+        print('===================')
+    print(edit_ops)
+    res = {'returned': paras, 'ops': edit_ops}
+    return res, 200
 
 def load_openai_key():
     with open("./key.txt") as fob:
